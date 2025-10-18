@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vreme Campus Observator • Web UI IoT</title>
+
+  <!-- Tailwind + MQTT -->
+  <script>window.APP_VER='2.1.0'</script>
+  <script src="https://cdn.tailwindcss.com?ver=2.1.0"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js?ver=2.1.0"></script>
+
+  <style>
+    :root{ --bg-url: url('3.jpg'); }
+    body{ position:relative; margin:0; min-height:100vh; color:#fff; background:#0b1220; }
+    body::before{
+      content:""; position:fixed; inset:0;
+      background-image:linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.55)), var(--bg-url);
+      background-size:cover; background-position:center; filter:brightness(.9);
+      z-index:-1; pointer-events:none;
+    }
+    .glass{ backdrop-filter:saturate(180%) blur(10px); background:rgba(255,255,255,0.14); }
+    .btn-day{ background:transparent; border:1px solid rgba(255,255,255,0.4); }
+    .btn-day[aria-pressed="true"]{ background:rgba(255,255,255,0.18); }
+    pre{ font-family:ui-monospace,Menlo,Monaco,Consolas,"Liberation Mono",monospace; }
+    .badge{ border:1px solid rgba(255,255,255,.25); padding:.1rem .4rem; border-radius:.5rem; }
+  </style>
+</head>
+
+<body>
+  <div class="max-w-6xl mx-auto p-6 space-y-6 relative z-10">
+    <header class="glass rounded-2xl p-5 shadow flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight">Vreme Campus Observator</h1>
+        <p class="opacity-80 text-sm">Cluj-Napoca • Web UI + MQTT (HiveMQ Cloud)</p>
+      </div>
+      <div id="status" class="text-sm opacity-90">Selectează o zi.</div>
+    </header>
+
+    <!-- Butoane zile (lăsate exact cum erau) -->
+    <section class="glass rounded-2xl p-5 shadow">
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <button class="btn-day rounded-xl py-2 px-3" data-day="0">Luni</button>
+        <button class="btn-day rounded-xl py-2 px-3" data-day="1">Marți</button>
+        <button class="btn-day rounded-xl py-2 px-3" data-day="2">Miercuri</button>
+        <button class="btn-day rounded-xl py-2 px-3" data-day="3">Joi</button>
+        <button class="btn-day rounded-xl py-2 px-3" data-day="4">Vineri</button>
+        <button class="btn-day rounded-xl py-2 px-3" data-day="5">Sâmbătă</button>
+        <button class="btn-day rounded-xl py-2 px-3" data-day="6">Duminică</button>
+      </div>
+    </section>
+
+    <!-- Detalii zi (demo, NU atins) -->
+    <section class="glass rounded-2xl p-6 shadow">
+      <div id="dayTitle" class="text-xl font-semibold mb-2">—</div>
+      <div id="daySubtitle" class="opacity-90 mb-4 text-sm">Alege o zi pentru a vedea detaliile.</div>
+      <div id="details" class="grid md:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- Panou IoT -->
+    <section class="glass rounded-2xl p-5 shadow space-y-3">
+      <h2 class="text-lg font-semibold">IoT (HiveMQ Cloud) – date reale din OpenWeather</h2>
+      <div class="flex flex-wrap gap-3 items-center text-sm">
+        <div>Stare MQTT: <span id="mqttState" class="font-semibold badge">Neconectat</span></div>
+        <button id="btnStart" class="rounded-xl px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700">Start senzor (OpenWeather)</button>
+        <button id="btnStop"  class="rounded-xl px-3 py-1.5 bg-white/20" disabled>Stop</button>
+      </div>
+      <pre id="mqttLog" class="bg-black/30 rounded-xl p-3 text-xs overflow-auto max-h-64"></pre>
+
+      <!-- Live panel -->
+      <div class="text-sm mt-2">
+        Live senzor:
+        <span class="font-semibold">T=</span><span id="liveTemp">—</span>°C,
+        <span class="font-semibold">RH=</span><span id="liveHum">—</span>%,
+        <span class="font-semibold">la</span> <span id="liveTime">—</span>,
+        <span class="font-semibold">loc</span> <span id="liveCity">—</span>
+        <span id="liveStale" class="ml-2 badge hidden">stale</span>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    /* ===== Utils UI ===== */
+    const $  = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
+    const log = (m)=>{ const pre = $('#mqttLog'); pre.textContent += m + "\n"; pre.scrollTop = pre.scrollHeight; };
+
+    /* ===== Zile / Prognoză (DEMO – NE-MODIFICATĂ) ===== */
+    (() => {
+      const dayNames = ['Luni','Marți','Miercuri','Joi','Vineri','Sâmbătă','Duminică'];
+      const fakeForecast = Array.from({length:7}).map((_,i)=>({
+        zi: dayNames[i],
+        rezumat: ['Soare','Parțial noros','Ploi slabe','Noros','Vânt','Averse','Senin'][i % 7],
+        tempMin: 8 + i, tempMax: 18 + i
+      }));
+      const dayTitle = $('#dayTitle'), daySubtitle = $('#daySubtitle'), details = $('#details');
+
+      function renderDay(idx){
+        const d = fakeForecast[idx];
+        dayTitle.textContent = d.zi;
+        daySubtitle.textContent = d.rezumat + ` • ${d.tempMin}–${d.tempMax}°C`;
+        details.innerHTML = `
+          <div class="p-4 rounded-xl bg-white/10">
+            <div class="opacity-80 text-sm">Temperatură minimă</div>
+            <div class="text-2xl font-semibold">${d.tempMin}°C</div>
+          </div>
+          <div class="p-4 rounded-xl bg-white/10">
+            <div class="opacity-80 text-sm">Temperatură maximă</div>
+            <div class="text-2xl font-semibold">${d.tempMax}°C</div>
+          </div>
+          <div class="p-4 rounded-xl bg-white/10">
+            <div class="opacity-80 text-sm">Condiții</div>
+            <div class="text-2xl font-semibold">${d.rezumat}</div>
+          </div>
+        `;
+        $('#status').textContent = `Ai selectat: ${d.zi}`;
+      }
+      function setActive(btn){ $$('.btn-day').forEach(b=>b.setAttribute('aria-pressed','false')); btn.setAttribute('aria-pressed','true'); }
+      $$('.btn-day').forEach(btn=>{
+        btn.addEventListener('click', ()=>{ setActive(btn); renderDay(parseInt(btn.dataset.day,10)); });
+      });
+      const todayIdx = (new Date().getDay() + 6) % 7;
+      const defaultBtn = $(`.btn-day[data-day="${todayIdx}"]`) || $('.btn-day');
+      setActive(defaultBtn); renderDay(parseInt(defaultBtn.dataset.day,10));
+    })();
+
+    /* ===== MQTT + OpenWeather (Cluj-Napoca) ===== */
+    (() => {
+      /* Broker */
+      const BROKER_WSS = 'wss://d0bf3c7ce3ec409ebe1be86cf04fcaf2.s1.eu.hivemq.cloud:8884/mqtt';
+      const MQTT_USER  = 'remus';
+      const MQTT_PASS  = 'Remus123';
+      const TOPIC_PUB  = 'campus/meteo/virtual-01';
+      const TOPIC_SUB  = 'campus/meteo/#';
+
+      /* OpenWeather */
+      const OPENWEATHER_API_KEY = 'PUNE_CHEIA_TA_AICI'; // <<< OBLIGATORIU: înlocuiește cu cheia ta
+      const CITY = 'Cluj-Napoca';
+      const COUNTRY = 'RO';
+      const TZ = 'Europe/Bucharest';
+      const OW_URL = (city,country,key) =>
+        `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)},${country}&units=metric&lang=ro&appid=${key}`;
+
+      let client = null, pollTimer = null, staleTimer = null;
+
+      function connectMQTT(){
+        client = mqtt.connect(BROKER_WSS, {
+          clientId: 'webui-' + Math.random().toString(16).slice(2),
+          username: MQTT_USER, password: MQTT_PASS,
+          keepalive: 60, clean: true, reconnectPeriod: 3000
+        });
+
+        client.on('connect', () => {
+          $('#mqttState').textContent = 'Conectat';
+          $('#mqttState').classList.add('bg-emerald-600/30');
+          log(`✅ MQTT conectat (app ${window.APP_VER})`);
+
+          client.subscribe(TOPIC_SUB, { qos:1 }, (err)=> {
+            if(err){ log('❌ Subscribe: '+err.message); return; }
+            log('📡 Subscribed: '+TOPIC_SUB);
+            // curățăm retained pe topicul nostru
+            client.publish(TOPIC_PUB, '', { retain:true });
+            log('🧹 Retained curățat pe ' + TOPIC_PUB);
+          });
+        });
+
+        client.on('error', e => log('❌ MQTT error: ' + e.message));
+        client.on('close', () => {
+          $('#mqttState').textContent = 'Neconectat';
+          $('#mqttState').classList.remove('bg-emerald-600/30');
+          log('🔌 Conexiune închisă');
+        });
+
+        client.on('message', (topic, msgBuf)=>{
+          if(topic !== TOPIC_PUB) return;
+          if(!msgBuf || msgBuf.length === 0){
+            log('⬅️  ' + topic + '  (mesaj gol / retained cleared)');
+            return;
+          }
+          try{
+            const d = JSON.parse(msgBuf.toString());
+            const temperatura = (d.temperatura ?? d.t ?? d.temp ?? '—');
+            const umiditate   = (d.umiditate   ?? d.rh       ?? '—');
+            const timpISO     = (d.timp        ?? d.ts       ?? null);
+            const oras        = d.locatie?.oras ?? CITY;
+
+            const timpStr = timpISO ? new Date(timpISO).toLocaleString('ro-RO', { timeZone: TZ }) : '—';
+            // UI Live
+            $('#liveTemp').textContent = temperatura;
+            $('#liveHum').textContent  = umiditate;
+            $('#liveTime').textContent = timpStr;
+            $('#liveCity').textContent = oras;
+            $('#liveStale').classList.add('hidden');
+            clearTimeout(staleTimer);
+            staleTimer = setTimeout(()=>$('#liveStale').classList.remove('hidden'), 120000);
+
+            log('⬅️  ' + topic + '  ' + JSON.stringify({ temperatura, umiditate, timp: timpISO ?? '—' }));
+          }catch{
+            log('⬅️  ' + topic + '  ' + msgBuf.toString());
+          }
+        });
+      }
+
+      async function fetchOpenWeather(){
+        if(!OPENWEATHER_API_KEY || OPENWEATHER_API_KEY === 'PUNE_CHEIA_TA_AICI'){
+          log('❌ OpenWeather: setează OPENWEATHER_API_KEY');
+          return null;
+        }
+        try{
+          const resp = await fetch(OW_URL(CITY, COUNTRY, OPENWEATHER_API_KEY));
+          if(!resp.ok){
+            log(`❌ OpenWeather HTTP ${resp.status}`);
+            return null;
+          }
+          const j = await resp.json();
+          // j.main.temp (°C), j.main.humidity (%), j.dt (epoch UTC)
+          const temperatura = typeof j?.main?.temp === 'number' ? +j.main.temp.toFixed(1) : null;
+          const umiditate   = typeof j?.main?.humidity === 'number' ? j.main.humidity : null;
+          const timpISO     = j?.dt ? new Date(j.dt*1000).toISOString() : new Date().toISOString();
+          if(temperatura==null || umiditate==null){
+            log('❌ OpenWeather: câmpuri lipsă în răspuns');
+            return null;
+          }
+          return { temperatura, umiditate, timpISO };
+        }catch(e){
+          log('❌ OpenWeather fetch: ' + (e?.message || e));
+          return null;
+        }
+      }
+
+      function publishReading({ temperatura, umiditate, timpISO }){
+        if(!client || !client.connected){ log('ℹ️ MQTT nu e conectat încă'); return; }
+
+        const payload = {
+          temperatura, umiditate,
+          timp: timpISO,                        // UTC ISO
+          timp_local: new Date(timpISO).toLocaleString('ro-RO', { timeZone: TZ }),
+          tz: TZ,
+          locatie: { oras: CITY, tara: COUNTRY },
+          // aliasuri scurte
+          t: temperatura, rh: umiditate, ts: timpISO,
+          src: 'openweather'
+        };
+
+        client.publish(TOPIC_PUB, JSON.stringify(payload), { qos:1, retain:true }, (err)=>{
+          if(err){ log('❌ Publish: ' + err.message); return; }
+          log('➡️  ' + TOPIC_PUB + '  ' + JSON.stringify({ temperatura, umiditate, timp: timpISO }));
+        });
+      }
+
+      async function pollOnceAndPublish(){
+        const data = await fetchOpenWeather();
+        if(data) publishReading(data);
+      }
+
+      function startSensor(){
+        if(!client || !client.connected){ log('ℹ️ Așteaptă conectarea MQTT…'); return; }
+        $('#btnStart').disabled = true; $('#btnStop').disabled = false;
+        log('▶️ Start senzor (OpenWeather Cluj-Napoca) • refresh la 60s');
+
+        // rulează imediat, apoi la 60s
+        pollOnceAndPublish();
+        pollTimer = setInterval(pollOnceAndPublish, 60000);
+      }
+
+      function stopSensor(){
+        if(pollTimer){ clearInterval(pollTimer); pollTimer = null; }
+        $('#btnStart').disabled = false; $('#btnStop').disabled = true;
+        log('⏸️ Stop senzor');
+      }
+
+      $('#btnStart').addEventListener('click', startSensor);
+      $('#btnStop').addEventListener('click', stopSensor);
+
+      connectMQTT();
+    })();
+  </script>
+</body>
+</html>
