@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Room Diagnostics • Web UI IoT</title>
+
+
+  <script>window.APP_VER='3.1.0-vu'</script>
+  <script src="https://cdn.tailwindcss.com?ver=2.1.0"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js?ver=2.1.0"></script>
+
+
+
+  <link rel="stylesheet" href="CSS/style.css">
+  <script src="JS/iot-mqtt.js" defer></script>
+</head>
+
+<body>
+<div class="max-w-6xl mx-auto p-6 space-y-6 relative z-10">
+
+  <header class="glass rounded-2xl p-5 shadow flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight">Room Diagnostics Dashboard</h1>
+      <p class="opacity-80 text-sm">Live data from ESP32 Sensor Hub via MQTT</p>
+    </div>
+    <div class="text-sm opacity-90 text-right">
+      Stare MQTT: <span id="mqttState" class="font-semibold badge">Neconectat</span>
+      <div>
+        Ultima actualizare: <span id="liveTime" class="font-semibold">—</span>
+        <span id="liveStale" class="ml-2 badge hidden">stale</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+    <div class="glass rounded-2xl p-5">
+      <div class="text-sm opacity-80">Temperatură</div>
+      <div class="text-3xl font-semibold"><span id="liveTemp">—</span> °C</div>
+    </div>
+
+    <div class="glass rounded-2xl p-5">
+      <div class="text-sm opacity-80">Umiditate</div>
+      <div class="text-3xl font-semibold"><span id="liveHum">—</span> %</div>
+    </div>
+
+    <div class="glass rounded-2xl p-5">
+      <div class="text-sm opacity-80">Nivel Lumină</div>
+      <div class="text-3xl font-semibold"><span id="liveLight">—</span> lux</div>
+    </div>
+
+    <div class="glass rounded-2xl p-5">
+      <div class="text-sm opacity-80">Presiune</div>
+      <div class="text-3xl font-semibold"><span id="livePressure">—</span> hPa</div>
+    </div>
+
+    <div class="glass rounded-2xl p-5">
+      <div class="flex justify-between items-center mb-3">
+        <div class="text-sm opacity-80">Nivel Zgomot</div>
+        <div class="text-3xl font-semibold"><span id="liveNoise">—</span> %</div>
+      </div>
+      <div id="vuMeter" class="flex items-center gap-1 h-10">
+        <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
+        <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
+        <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
+        <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
+        <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
+        <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
+        <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
+        <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
+        <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
+        <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="glass rounded-2xl p-5 shadow space-y-3">
+    <h2 class="text-lg font-semibold">Jurnal MQTT (Debug)</h2>
+    <pre id="mqttLog" class="bg-black/30 rounded-xl p-3 text-xs overflow-auto max-h-64"></pre>
+  </section>
+
+</div>
+</body>
+</html>
