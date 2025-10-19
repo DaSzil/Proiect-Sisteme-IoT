@@ -1,0 +1,81 @@
+/* ===== Technological HUD Theme ===== */
+
+:root {
+    /* Definim culoarea principală "electric cyan" */
+    --accent-color: #00FFFF;
+    --accent-glow: rgba(0, 255, 255, 0.3);
+}
+
+body {
+    position: relative;
+    margin: 0;
+    min-height: 100vh;
+    color: #E5E7EB; /* Text gri-deschis */
+    background: #020617; /* Fundal "midnight" (albastru-negru) */
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* Eliminăm fundalul cu fotografie */
+body::before {
+    display: none;
+}
+
+/* Cardurile ".glass" devin panouri HUD */
+.glass {
+    backdrop-filter: none;
+    background: rgba(15, 23, 42, 0.5); /* Albastru-închis, semi-transparent */
+    border: 1px solid rgba(0, 255, 255, 0.3); /* Bordură cyan, semi-transparentă */
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), /* Glow exterior */
+    inset 0 0 10px rgba(0, 255, 255, 0.05); /* Glow interior */
+}
+
+/* Stil nou pentru badge-uri */
+.badge {
+    background: rgba(0, 255, 255, 0.1); /* Fundal cyan transparent */
+    border: 1px solid var(--accent-glow);
+    color: var(--accent-color); /* Text cyan */
+    padding: .15rem .5rem;
+    border-radius: .5rem;
+    font-weight: 600;
+    text-shadow: 0 0 5px var(--accent-glow); /* Efect de glow pe text */
+}
+
+/* Jurnalul de log (terminal) */
+pre {
+    font-family: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    color: #94A3B8; /* Text log mai estompat */
+    background: rgba(0, 0, 0, 0.3); /* Fundal negru, transparent */
+    border: 1px solid #334155; /* Bordură subtilă */
+}
+
+/* Facem titlul și datele numerice să iasă în evidență */
+h1, .text-3xl .font-semibold {
+    color: var(--accent-color); /* Culoare cyan */
+    text-shadow: 0 0 7px var(--accent-glow); /* Efect de glow */
+}
+
+/*
+ * Stil nou pentru VU Meter (segmente mai ascuțite)
+ */
+.vu-segment {
+    transition: all 0.1s ease;
+    border-radius: 2px !important; /* Colțuri ascuțite (suprascrie 'rounded' din HTML) */
+    /* Bordură subtilă pentru toate segmentele */
+    border: 1px solid rgba(0, 255, 255, 0.1);
+}
+
+/* Suprascriem culorile "off" din Tailwind */
+.vu-segment[class*="bg-black"] {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Adăugăm un glow segmentelor "on" */
+.vu-segment[class*="bg-green-500"] {
+    box-shadow: 0 0 8px #22c55e;
+}
+.vu-segment[class*="bg-yellow-500"] {
+    box-shadow: 0 0 8px #eab308;
+}
+.vu-segment[class*="bg-red-500"] {
+    box-shadow: 0 0 8px #ef4444;
+}
