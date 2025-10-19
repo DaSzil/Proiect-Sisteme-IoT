@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Room Diagnostics • Web UI IoT</title>
+  <title>Informații Prezente Sala </title>
 
 
   <script>window.APP_VER='3.1.0-vu'</script>
@@ -33,7 +33,7 @@
     </div>
   </header>
 
-  <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
     <div class="glass rounded-2xl p-5">
       <div class="text-sm opacity-80">Temperatură</div>
@@ -49,6 +49,9 @@
       <div class="text-sm opacity-80">Nivel Lumină</div>
       <div class="text-3xl font-semibold"><span id="liveLight">—</span> lux</div>
     </div>
+  </section>
+
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
     <div class="glass rounded-2xl p-5">
       <div class="text-sm opacity-80">Presiune</div>
@@ -58,7 +61,7 @@
     <div class="glass rounded-2xl p-5">
       <div class="flex justify-between items-center mb-3">
         <div class="text-sm opacity-80">Nivel Zgomot</div>
-        <div class="text-3xl font-semibold"><span id="liveNoise">—</span> %</div>
+        <div class="text-3xl font-semibold"><span id="liveNoise">—</span> dB</div>
       </div>
       <div id="vuMeter" class="flex items-center gap-1 h-10">
         <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
@@ -73,6 +76,9 @@
         <div class="vu-segment flex-1 h-full rounded bg-black/20"></div>
       </div>
     </div>
+  </section>
+
+
   </section>
 
   <section class="glass rounded-2xl p-5 shadow space-y-3">
