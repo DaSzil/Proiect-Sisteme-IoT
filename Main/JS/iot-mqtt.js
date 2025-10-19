@@ -21,12 +21,12 @@
             log(`✅ MQTT conectat (app ${window.APP_VER})`);
 
             client.subscribe(TOPIC_SUB, { qos: 1 }, (err)=> {
-                if(err){ log('❌ Subscribe: ' + err.message); return; }
+                if(err){ log('Subscribe: ' + err.message); return; }
                 log('📡 Subscribed to: ' + TOPIC_SUB);
             });
         });
 
-        client.on('error', e => log('❌ MQTT error: ' + e.message));
+        client.on('error', e => log('MQTT error: ' + e.message));
         client.on('close', () => {
             $('#mqttState').textContent = 'Neconectat';
             $('#mqttState').classList.remove('bg-emerald-600/30');
@@ -38,7 +38,7 @@
             if (topic !== TOPIC_SUB) return;
 
             const msgString = msgBuf.toString();
-            log(`⬅️ ${topic}: ${msgString}`);
+            log(`<= ${topic}: ${msgString}`);
 
             try {
                 const data = JSON.parse(msgString);
@@ -55,9 +55,14 @@
 
                 if (data.noiseLevel != null) {
                     let percent = Math.max(0, Math.min(100, data.noiseLevel));
-                    noiseText.textContent = Math.round(percent);
+
+                    const dbValue = (percent * 0.7) + 30;
+
+                    // Afișăm valoarea dB
+                    noiseText.textContent = Math.round(dbValue);
 
                     // Calculăm câte segmente trebuie să fie 'on' (de la 0 la 10)
+                    // Această logică folosește în continuare 'percent', deci funcționează perfect
                     const activeSegments = Math.round(percent / 10);
 
                     // Parcurgem toate segmentele și le setăm starea 'on' sau 'off'
@@ -98,7 +103,7 @@
                 staleTimer = setTimeout(()=>$('#liveStale').classList.remove('hidden'), 120000);
 
             } catch (e) {
-                log('❌ Eroare JSON: ' + e.message);
+                log('Eroare JSON: ' + e.message);
             }
         });
     }
